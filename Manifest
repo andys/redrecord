@@ -1,0 +1,7 @@
+CHANGELOG
+README
+Rakefile
+lib/redrecord.rb
+test/test_all.rb
+test/test_helper.rb
+Manifest

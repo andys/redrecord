@@ -1,0 +1,72 @@
+
+redrecord
+---------
+
+This gem pre-caches your ActiveRecord model's calculated attributes (computed
+fields) in Redis.
+
+
+Example
+-------
+
+ class User < ActiveRecord::Base
+
+   cache do
+     def fullname
+       firstname + ' ' + lastname
+     end
+   end
+
+ end
+
+
+Methods defined inside the "cache" block are redefined to get the answer
+from redis first.  The cached attributes are saved whenever the record is
+saved, in an after_commit callback.
+
+
+Cache invalidation for associations
+-----------------------------------
+
+Redrecord can be used to cache attributes that use assocations:
+
+ class User < ActiveRecord::Base
+   has_many :preferences
+
+   cache do
+     def preferences_list
+       preferences.map(&:name).join(', ')
+     end
+   end
+
+ end
+
+ class Preference < ActiveRecord::Base
+   belongs_to :user
+
+   invalidate_cache_on :user
+
+ end
+
+
+In this example, whenever a preference is saved, the associated user record
+will be recalculated and saved in redis.  If it is an array (eg. has_many)
+then all of the associated records will be re-cached.
+
+Other instance methods of interest:
+
+ obj.remove_from_cache! # Remove redis cache for an object.
+ obj.add_to_cache!      # Recalculate fields and store in redis.
+ obj.cached_fields      # hash of the cached fields and their values
+ obj.attribs_with_cached_fields # cached_fields merged with AR attributes
+
+
+
+
+
+Contact the author
+------------------
+
+Andrew Snow <andrew@modulus.org>
+Andys^ on irc.freenode.net
+
