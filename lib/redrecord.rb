@@ -1,13 +1,26 @@
 
+require 'timeout'
+
 class Redrecord
 
   class << self
-    attr_accessor :redis
+    attr_accessor :redis, :enabled, :write_only, :timeout
     def update_queue
       Thread.current[:redrecord_update_queue] ||= []
     end
     def is_marshalled?(str)
       Marshal.dump(nil)[0,2] == str[0,2]
+    end
+    def redis_op(op, *args)
+      if @enabled
+        begin
+          Timeout.timeout(@timeout || 15) do
+            redis.send(op, *args)
+          end
+        rescue Timeout::Error
+          @enabled = nil
+        end
+      end
     end
   end
 
@@ -92,11 +105,11 @@ class Redrecord
     end
     
     def remove_from_cache!
-      Redrecord.redis.del redrecord_key
+      Redrecord.redis_op :del, redrecord_key
     end
     
     def add_to_cache!
-      Redrecord.redis.hmset(redrecord_key,
+      Redrecord.redis_op(:hmset, redrecord_key,
         *(self.class.redrecord_cached_fields.map {|f|
           val = send("#{f}_without_cache")
           [f.to_s, String===val && !Redrecord.is_marshalled?(val) ? val : Marshal.dump(val)]
@@ -109,12 +122,12 @@ class Redrecord
     end
 
     def redrecord_redis_cache
-      @redrecord_redis_cache ||= Redrecord.redis.hgetall(redrecord_key)
+      @redrecord_redis_cache ||= Redrecord.redis_op(:hgetall, redrecord_key) unless Redrecord.write_only
     end
 
     def redrecord_cached_attrib_hash
       @redrecord_cached_attrib_hash ||= Hash.new do |h,k|
-        h[k.to_sym] = if(cached = (redrecord_redis_cache[k.to_s] unless new_record?))
+        h[k.to_sym] = if(cached = (redrecord_redis_cache && redrecord_redis_cache[k.to_s] unless new_record?))
           Redrecord.is_marshalled?(cached) ? Marshal.load(cached) : cached
         else
           send("#{k}_without_cache")

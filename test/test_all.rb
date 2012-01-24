@@ -9,6 +9,7 @@ require "#{File.dirname(__FILE__)}/test_helper"
 class TestRedrecord < Test::Unit::TestCase
   def setup
     $redis.flushdb
+    Redrecord.enabled = true
     @user = TestUser.new(1, 'John', 'Smith')
     $saved = {}
   end
@@ -28,7 +29,6 @@ class TestRedrecord < Test::Unit::TestCase
     assert_equal 'John Smith', u2.full_name
     assert_nil u2.recalculated
   end
-
 
   def test_cached_nil_attribute_save
     @user.save
@@ -101,6 +101,23 @@ class TestRedrecord < Test::Unit::TestCase
         :group_names => [],
         :full_name   => 'John Smith'},
       @user.attribs_with_cached_fields)
+  end
+
+  def test_write_only_mode
+    Redrecord.write_only = true
+    @user.save
+    assert_equal 'John Smith', $redis.hget('TestUser:1', 'full_name')
+    
+    # different object should not get the value from redis
+    u2 = TestUser.new(1, 'Bob', 'Smith')
+    assert_equal 'Bob Smith', u2.full_name
+    assert u2.recalculated    
+  end
+
+  def test_disabled_mode
+    Redrecord.enabled = nil
+    @user.save
+    assert_nil $redis.hget('TestUser:1', 'full_name')
   end
 
   
