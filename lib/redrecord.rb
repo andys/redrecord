@@ -17,8 +17,9 @@ class Redrecord
           Timeout.timeout(@timeout || 15) do
             redis.send(op, *args)
           end
-        rescue Timeout::Error
-          @enabled = nil
+        rescue Exception => e
+          STDERR.puts "Redrecord: Disabling redis due to exception (#{e})"
+          @enabled = false
         end
       end
     end
@@ -44,7 +45,8 @@ class Redrecord
         end
         redrecord_cached_fields.push(*fields)
         fields.each do |f|
-          define_method "#{f}_with_cache" do
+          aliased_target, punctuation = f.to_s.sub(/([?!=])$/, ''), $1
+          define_method("#{aliased_target}_with_cache#{punctuation}") do
             cached_method(f)
           end
           alias_method_chain f, :cache
@@ -95,6 +97,7 @@ class Redrecord
           record.remove_from_cache!
         elsif command == :save
           record.add_to_cache!
+          # possible todo: cascade invalidation (but avoid loops)
         end
       end
       Redrecord.update_queue.clear
@@ -111,7 +114,8 @@ class Redrecord
     def add_to_cache!
       Redrecord.redis_op(:hmset, redrecord_key,
         *(self.class.redrecord_cached_fields.map {|f|
-          val = send("#{f}_without_cache")
+          aliased_target, punctuation = f.to_s.sub(/([?!=])$/, ''), $1
+          val = send("#{aliased_target}_without_cache#{punctuation}")
           [f.to_s, String===val && !Redrecord.is_marshalled?(val) ? val : Marshal.dump(val)]
         }.flatten)
       )
@@ -130,7 +134,8 @@ class Redrecord
         h[k.to_sym] = if(cached = (redrecord_redis_cache && redrecord_redis_cache[k.to_s] unless new_record?))
           Redrecord.is_marshalled?(cached) ? Marshal.load(cached) : cached
         else
-          send("#{k}_without_cache")
+          aliased_target, punctuation = k.to_s.sub(/([?!=])$/, ''), $1
+          send("#{aliased_target}_without_cache#{punctuation}")
         end
       end
     end

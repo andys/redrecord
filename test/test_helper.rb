@@ -1,8 +1,6 @@
 
 # WARNING: The database specified here will be CLEARED of ALL DATA
 $redis = Redis.new(:host => 'localhost', :port => 6379, :db => 15)
-Redrecord.redis = $redis
-Redrecord.enabled = true
 
 class TestModel
   extend ActiveModel::Callbacks
@@ -66,6 +64,9 @@ class TestUser < TestModel
     end
     def group_names
       $saved.values.select {|v| TestGroup===v && v.user.id == self.id }.map(&:name).sort
+    end
+    def valid?
+      true
     end
   end
 end

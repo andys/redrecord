@@ -9,6 +9,7 @@ require "#{File.dirname(__FILE__)}/test_helper"
 class TestRedrecord < Test::Unit::TestCase
   def setup
     $redis.flushdb
+    Redrecord.redis = $redis
     Redrecord.enabled = true
     @user = TestUser.new(1, 'John', 'Smith')
     $saved = {}
@@ -88,6 +89,7 @@ class TestRedrecord < Test::Unit::TestCase
     assert_equal({
         :nil         => nil,
         :group_names => [],
+        :valid?      => true,
         :full_name   => 'John Smith'},
       @user.cached_fields)
   end
@@ -99,6 +101,7 @@ class TestRedrecord < Test::Unit::TestCase
         :id          => 1,
         :nil         => nil,
         :group_names => [],
+        :valid?      => true,
         :full_name   => 'John Smith'},
       @user.attribs_with_cached_fields)
   end
@@ -120,5 +123,17 @@ class TestRedrecord < Test::Unit::TestCase
     assert_nil $redis.hget('TestUser:1', 'full_name')
   end
 
+  def test_question_marked_method
+    @user.save
+    u2 = TestUser.new(1, 'Bob', 'Smith')
+    assert_equal true, u2.valid?
+    assert !u2.recalculated    
+  end
   
+  def test_disable_due_to_exception
+    Redrecord.redis = nil
+    @user.save
+    assert_equal false, Redrecord.enabled
+  end
+
 end
