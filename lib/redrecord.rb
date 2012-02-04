@@ -37,7 +37,7 @@ class Redrecord
         @redrecord_invalidation_fields ||= []
       end
       
-      def cache(*fields, &bl)
+      def redis_cache(*fields, &bl)
         if block_given?
           old_methods = instance_methods
           class_eval(&bl)

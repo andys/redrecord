@@ -1,4 +1,6 @@
 
+v0.4. Avoid method name clash with ActiveRecord
+
 v0.3. Support bang and question mark method rewrites
 
 v0.2. Support disabling cache on timeout

@@ -11,7 +11,7 @@ Example
 
  class User < ActiveRecord::Base
 
-   cache do
+   redis_cache do
      def fullname
        firstname + ' ' + lastname
      end
@@ -33,7 +33,7 @@ Redrecord can be used to cache attributes that use assocations:
  class User < ActiveRecord::Base
    has_many :preferences
 
-   cache do
+   redis_cache do
      def preferences_list
        preferences.map(&:name).join(', ')
      end

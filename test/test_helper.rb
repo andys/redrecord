@@ -54,7 +54,7 @@ class TestUser < TestModel
     @id, @first_name, @last_name = id, first_name, last_name
   end
   
-  cache do
+  redis_cache do
     def full_name
       @recalculated = true
       "#{first_name} #{last_name}"
