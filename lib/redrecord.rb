@@ -11,6 +11,22 @@ class Redrecord
     def is_marshalled?(str)
       Marshal.dump(nil)[0,2] == str[0,2]
     end
+    def unmarshal(str)
+      if(is_marshalled?(str))
+        Marshal.load(str)
+      elsif(str =~ /^\d+$/)
+        str.to_i
+      else
+        str
+      end
+    end
+    def marshal(obj)
+      if Integer===obj || String===obj && obj !~ /^\d+$/ && !is_marshalled?(obj)
+        obj.to_s
+      else
+        Marshal.dump(obj)
+      end
+    end
     def redis_op(op, *args)
       if @enabled
         begin
@@ -18,7 +34,7 @@ class Redrecord
             redis.send(op, *args)
           end
         rescue Exception => e
-          STDERR.puts "Redrecord: Disabling redis due to exception (#{e})"
+          $stderr.puts "Redrecord: Disabling redis due to exception (#{e})"
           @enabled = false
         end
       end
@@ -116,13 +132,13 @@ class Redrecord
         *(self.class.redrecord_cached_fields.map {|f|
           aliased_target, punctuation = f.to_s.sub(/([?!=])$/, ''), $1
           val = send("#{aliased_target}_without_cache#{punctuation}")
-          [f.to_s, String===val && !Redrecord.is_marshalled?(val) ? val : Marshal.dump(val)]
+          [f.to_s, Redrecord.marshal(val)]
         }.flatten)
       )
     end
     
     def verify_cache!
-      redrecord_redis_cache && redrecord_redis_cache.keys.each do |key|
+      (redis_cached_keys = Redrecord.redis_op(:hkeys, redrecord_key)) && redis_cached_keys.each do |key|
         calculated = redrecord_uncached_value(key)
         if(redrecord_cached_attrib_hash[key] != calculated)
           raise "#{redrecord_key}.#{key}: expected <#{calculated}> but got <#{redrecord_cached_attrib_hash[key]}> from redis cache"
@@ -141,7 +157,7 @@ class Redrecord
     def redrecord_cached_attrib_hash
       @redrecord_cached_attrib_hash ||= Hash.new do |h,k|
         h[k.to_sym] = if(cached = (redrecord_redis_cache && redrecord_redis_cache[k.to_s] unless new_record?))
-          Redrecord.is_marshalled?(cached) ? Marshal.load(cached) : cached
+          Redrecord.unmarshal(cached)
         else
           redrecord_uncached_value(k)
         end

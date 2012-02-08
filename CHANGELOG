@@ -1,3 +1,4 @@
+v0.6. Don't bother marshalling when storing integers
 
 v0.5. Support cache verify method
 

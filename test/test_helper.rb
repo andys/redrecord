@@ -68,5 +68,8 @@ class TestUser < TestModel
     def valid?
       true
     end
+    def number
+      12345
+    end
   end
 end

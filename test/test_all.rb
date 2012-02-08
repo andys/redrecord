@@ -37,6 +37,12 @@ class TestRedrecord < Test::Unit::TestCase
     u2 = TestUser.new(1, 'John', 'Smith')
     assert_nil u2.nil
   end
+  
+  def test_number
+    @user.save
+    assert_equal '12345', $redis.hget('TestUser:1', 'number')
+    assert_equal 12345, @user.number_with_cache
+  end
 
   def test_invalidation_on_save
     @user.save
@@ -90,6 +96,7 @@ class TestRedrecord < Test::Unit::TestCase
         :nil         => nil,
         :group_names => [],
         :valid?      => true,
+        :number      => 12345,
         :full_name   => 'John Smith'},
       @user.cached_fields)
   end
@@ -102,6 +109,7 @@ class TestRedrecord < Test::Unit::TestCase
         :nil         => nil,
         :group_names => [],
         :valid?      => true,
+        :number      => 12345,
         :full_name   => 'John Smith'},
       @user.attribs_with_cached_fields)
   end
@@ -132,15 +140,17 @@ class TestRedrecord < Test::Unit::TestCase
   
   def test_disable_due_to_exception
     Redrecord.redis = nil
+    old = $stderr ; $stderr = StringIO.new
     @user.save
+    $stderr = old
     assert_equal false, Redrecord.enabled
   end
 
   def test_verify_ok
     @user.save
-    assert_equal ["full_name", "nil", "group_names", "valid?"].sort, @user.verify_cache!.sort
+    assert_equal ["full_name", "nil", "group_names", "valid?", "number"].sort, @user.verify_cache!.sort
   end
-  
+
   def test_verify_fail
     @user.save
     assert_raises RuntimeError do
