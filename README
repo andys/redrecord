@@ -59,7 +59,7 @@ Other instance methods of interest:
  obj.add_to_cache!      # Recalculate fields and store in redis.
  obj.cached_fields      # hash of the cached fields and their values
  obj.attribs_with_cached_fields # cached_fields merged with AR attributes
-
+ obj.verify_cache!      # raise an error if cache doesn't match calculated
 
 
 If redis is down?

@@ -136,4 +136,17 @@ class TestRedrecord < Test::Unit::TestCase
     assert_equal false, Redrecord.enabled
   end
 
+  def test_verify_ok
+    @user.save
+    assert_equal ["full_name", "nil", "group_names", "valid?"].sort, @user.verify_cache!.sort
+  end
+  
+  def test_verify_fail
+    @user.save
+    assert_raises RuntimeError do
+      @user.first_name = 'Derp'
+      @user.verify_cache!
+    end
+  end  
+
 end

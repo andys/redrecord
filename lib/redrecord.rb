@@ -120,6 +120,15 @@ class Redrecord
         }.flatten)
       )
     end
+    
+    def verify_cache!
+      redrecord_redis_cache && redrecord_redis_cache.keys.each do |key|
+        calculated = redrecord_uncached_value(key)
+        if(redrecord_cached_attrib_hash[key] != calculated)
+          raise "#{redrecord_key}.#{key}: expected <#{calculated}> but got <#{redrecord_cached_attrib_hash[key]}> from redis cache"
+        end
+      end
+    end
 
     def cached_method(method_name)
       redrecord_cached_attrib_hash[method_name.to_sym]
@@ -134,10 +143,14 @@ class Redrecord
         h[k.to_sym] = if(cached = (redrecord_redis_cache && redrecord_redis_cache[k.to_s] unless new_record?))
           Redrecord.is_marshalled?(cached) ? Marshal.load(cached) : cached
         else
-          aliased_target, punctuation = k.to_s.sub(/([?!=])$/, ''), $1
-          send("#{aliased_target}_without_cache#{punctuation}")
+          redrecord_uncached_value(k)
         end
       end
+    end
+    
+    def redrecord_uncached_value(fieldname)
+      aliased_target, punctuation = fieldname.to_s.sub(/([?!=])$/, ''), $1
+      send("#{aliased_target}_without_cache#{punctuation}")
     end
 
     def attribs_with_cached_fields
