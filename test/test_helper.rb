@@ -48,6 +48,9 @@ class TestGroup < TestModel
   invalidate_cache_on :user
 end
 
+class TestDeepGroup < TestGroup
+end
+
 class TestUser < TestModel
   attr_accessor :first_name, :last_name, :id, :recalculated
   def initialize(id, first_name=nil, last_name=nil)

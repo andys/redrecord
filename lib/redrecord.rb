@@ -46,11 +46,11 @@ class Redrecord
     module ClassMethods
 
       def redrecord_cached_fields
-        @redrecord_cached_fields ||= []
+        @redrecord_cached_fields ||= [] + (superclass.respond_to?(:redrecord_cached_fields) ? [*superclass.redrecord_cached_fields] : [])
       end
 
       def redrecord_invalidation_fields
-        @redrecord_invalidation_fields ||= []
+        @redrecord_invalidation_fields ||= [] + (superclass.respond_to?(:redrecord_invalidation_fields) ? [*superclass.redrecord_invalidation_fields] : [])
       end
       
       def redis_cache(*fields, &bl)
@@ -59,6 +59,7 @@ class Redrecord
           class_eval(&bl)
           fields.push(*(instance_methods - old_methods))
         end
+        fields = fields.select {|f| instance_method(f).arity < 1 }
         redrecord_cached_fields.push(*fields)
         fields.each do |f|
           aliased_target, punctuation = f.to_s.sub(/([?!=])$/, ''), $1
@@ -140,8 +141,9 @@ class Redrecord
     def verify_cache!
       (redis_cached_keys = Redrecord.redis_op(:hkeys, redrecord_key)) && redis_cached_keys.each do |key|
         calculated = redrecord_uncached_value(key)
-        if(redrecord_cached_attrib_hash[key] != calculated)
-          raise "#{redrecord_key}.#{key}: expected <#{calculated}> but got <#{redrecord_cached_attrib_hash[key]}> from redis cache"
+        cachedval = Redrecord.unmarshal(Redrecord.redis_op(:hget, redrecord_key, key))
+        if(calculated != cachedval)
+          raise "#{redrecord_key}.#{key}: expected <#{calculated}> but got <#{cachedval}> from redis cache"
         end
       end
     end

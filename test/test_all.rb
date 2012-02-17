@@ -158,5 +158,11 @@ class TestRedrecord < Test::Unit::TestCase
       @user.verify_cache!
     end
   end  
+  
+  def test_inherited_invalidations
+    assert_equal [:user], TestGroup.redrecord_invalidation_fields
+    assert_equal [:user], TestDeepGroup.redrecord_invalidation_fields
+    assert_equal [], TestModel.redrecord_invalidation_fields
+  end
 
 end
